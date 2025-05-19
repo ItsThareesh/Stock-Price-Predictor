@@ -8,7 +8,7 @@ from keras.models import load_model
 import tempfile
 
 from helper import build_model, prepare_train_test_datasets
-from widgets import custom_progress_bar, show_graph, sidebar
+from widgets import custom_progress_bar, generate_prediction_graph, generate_history_graph, sidebar
 from configs import init_session_state
 
 init_session_state()
@@ -26,7 +26,7 @@ model_file = st.file_uploader("Upload your trained Model file (.keras, .h5)", ty
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
-    date_column, close_column, test_split, window_size, epochs, batch_size = sidebar(model_file, df)
+    date_column, close_column, test_split, window_size, epochs, batch_size, show_graph = sidebar(model_file, df)
 
     if st.session_state['DATE_UPDATED'] and st.session_state['CLOSE_UPDATED']:
         try:
@@ -68,7 +68,7 @@ if uploaded_file:
 
                 if st.session_state['RUN_PREDICT']:
                     st.success("✅ Model Predictions Completed!")
-                    show_graph(df, plt, date_column, close_column, training_data_len)
+                    generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
 
                 # Cleanup temporary files
 
@@ -86,7 +86,7 @@ if uploaded_file:
                     if not st.session_state['TRAINED']:
                         if st.button("🚀 Train Model", disabled=st.session_state['TRAINED']):
                             try:
-                                model = custom_progress_bar(epochs, batch_size, X_train, y_train, model)
+                                model = custom_progress_bar(st, epochs, batch_size, X_train, y_train, model)
                                 predictions = model.predict(X_test)
                                 predictions = scaler.inverse_transform(predictions)
 
@@ -96,11 +96,17 @@ if uploaded_file:
                                 st.rerun()
 
                             except Exception as e:
+                                print(e)
                                 st.error("Something went wrong... Refresh the page and Start again!")
 
                 if st.session_state['TRAINED']:
                     st.success("✅ Model Trained Successfully!")
-                    show_graph(df, plt, date_column, close_column, training_data_len)
+
+                    if show_graph:
+                        with st.expander(label="Training Graphs"):
+                            generate_history_graph(st.session_state['HISTORY'], plt)
+
+                    generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
 
                     _, col2, _ = st.columns([1, 1, 1])
 

@@ -15,7 +15,7 @@ def build_model(X_train):
     model.add(Dropout(0.5))
     model.add(Dense(1))
     model.summary()
-    model.compile(optimizer="adam", loss="mse")
+    model.compile(optimizer="adam", loss="mse", metrics=["root_mean_squared_error"])
 
     return model
 
