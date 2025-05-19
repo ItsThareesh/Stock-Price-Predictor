@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,7 +12,6 @@ from widgets import custom_progress_bar, show_graph
 from configs import init_session_state
 
 init_session_state()
-
 
 # Streamlit App
 st.set_page_config(page_title="Stock Price Predictor", page_icon="📈")
@@ -63,9 +64,9 @@ if uploaded_file:
             if model_file:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".keras") as tmp:
                     tmp.write(model_file.read())
-                    tmp_path = tmp.name
+                    loaded_model_path = tmp.name
 
-                model = load_model(tmp_path)  # Load Model
+                model = load_model(loaded_model_path)  # Load Model
 
                 _, col2, _ = st.columns([1, 1, 1])
 
@@ -85,6 +86,11 @@ if uploaded_file:
                 if st.session_state['RUN_PREDICT']:
                     st.success("✅ Model Predictions Completed!")
                     show_graph(df, plt, date_column, close_column, training_data_len)
+
+                # Cleanup temporary files
+
+                if os.path.exists(loaded_model_path):
+                    os.remove(loaded_model_path)
 
             else:
                 model = build_model(X_train)
@@ -108,6 +114,29 @@ if uploaded_file:
                 if st.session_state['TRAINED']:
                     st.success("✅ Model Trained Successfully!")
                     show_graph(df, plt, date_column, close_column, training_data_len)
+
+                    _, col2, _ = st.columns([1, 1, 1])
+
+                    with col2:
+                        with tempfile.NamedTemporaryFile(suffix=".keras", delete=False) as tmp:
+                            saved_model_path = tmp.name
+
+                            model.save(saved_model_path)
+                            tmp.seek(0)
+                            binary = tmp.read()
+
+                        st.markdown("<br>", unsafe_allow_html=True)  # Line Break
+
+                        st.download_button(
+                            label="Download Trained Model (.keras)",
+                            data=binary,
+                            file_name="custom_trained_model.keras",
+                        )
+
+                        # Cleanup the temporary files
+
+                        if os.path.exists(saved_model_path):
+                            os.remove(saved_model_path)
 
         except Exception as e:
             st.error(f"Error processing data: {e}")
