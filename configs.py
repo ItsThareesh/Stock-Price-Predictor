@@ -2,14 +2,16 @@ import streamlit as st
 
 
 def init_session_state():
-    if 'DATE_UPDATED' not in st.session_state:
-        st.session_state['DATE_UPDATED'] = False
-    if 'CLOSE_UPDATED' not in st.session_state:
-        st.session_state['CLOSE_UPDATED'] = False
-    if 'TRAINED' not in st.session_state:
-        st.session_state['TRAINED'] = False
-    if 'RUN_PREDICT' not in st.session_state:
-        st.session_state['RUN_PREDICT'] = False
+    defaults = {
+        'DATE_UPDATED': False,
+        'CLOSE_UPDATED': False,
+        'TRAINED': False,
+        'RUN_PREDICT': False
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
 
 def update_date():
