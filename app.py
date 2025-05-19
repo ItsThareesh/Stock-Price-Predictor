@@ -42,7 +42,7 @@ if uploaded_file:
         window_size = st.slider("Window Size", min_value=10, max_value=200, value=60, step=5)
 
         if not model_file:
-            epochs = st.slider("Epochs", min_value=1, max_value=100, value=5)
+            epochs = st.slider("Epochs", min_value=5, max_value=100, value=25, step=5)
             batch_size = st.selectbox("Batch Size", options=[16, 32, 64, 128], index=1)
 
     if st.session_state['DATE_UPDATED'] and st.session_state['CLOSE_UPDATED']:
