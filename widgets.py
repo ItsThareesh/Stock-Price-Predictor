@@ -25,3 +25,26 @@ def show_graph(df, plt, date_column, close_column, training_data_len):
     ax1.set_ylabel("Close Price")
     ax1.legend()
     st.pyplot(fig1)
+
+
+def sidebar(model_file, df):
+    st.sidebar.markdown("## Model Parameters")
+
+    df_cols = df.columns.tolist()
+
+    date_column = st.sidebar.selectbox("Select the Date column", df_cols, index=None, key='date_column',
+                                       on_change=lambda: st.session_state.update({'DATE_UPDATED': True}))
+    close_column = st.sidebar.selectbox("Select the Close Price column", df_cols, index=None, key='close_column',
+                                        on_change=lambda: st.session_state.update({'CLOSE_UPDATED': True}))
+
+    test_split = st.sidebar.slider("Test Data Fraction", 0.05, 0.5, 0.1, step=0.05)
+    window_size = st.sidebar.slider("Window Size", min_value=10, max_value=200, value=60, step=5)
+
+    epochs = None
+    batch_size = None
+
+    if not model_file:
+        epochs = st.sidebar.slider("Epochs", min_value=5, max_value=100, value=25, step=5)
+        batch_size = st.sidebar.selectbox("Batch Size", options=[16, 32, 64, 128], index=1)
+
+    return date_column, close_column, test_split, window_size, epochs, batch_size

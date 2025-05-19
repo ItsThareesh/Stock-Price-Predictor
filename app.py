@@ -8,7 +8,7 @@ from keras.models import load_model
 import tempfile
 
 from helper import build_model, prepare_train_test_datasets
-from widgets import custom_progress_bar, show_graph
+from widgets import custom_progress_bar, show_graph, sidebar
 from configs import init_session_state
 
 init_session_state()
@@ -19,31 +19,14 @@ st.set_page_config(page_title="Stock Price Predictor", page_icon="📈")
 st.title("📈 Stock Price Predictor with LSTM")
 
 st.markdown("<br><br>", unsafe_allow_html=True)
-uploaded_file = st.file_uploader("# Upload your stock CSV file", type=["csv"])
-model_file = st.file_uploader("Upload your trained Keras Model (.keras, .h5)", type=["keras", "h5"])
+uploaded_file = st.file_uploader("# Upload your CSV file", type=["csv"])
+model_file = st.file_uploader("Upload your trained Model file (.keras, .h5)", type=["keras", "h5"])
 
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
-    st.markdown("<br>", unsafe_allow_html=True)  # Line Break
-
-    with st.expander(label="Model Parameters"):
-        # Dataframe Paramters
-        df_cols = df.columns.tolist()
-
-        date_column = st.selectbox("Select the Date column", df_cols, index=None, key='date_column',
-                                   on_change=lambda: st.session_state.update({'DATE_UPDATED': True}))
-        close_column = st.selectbox("Select the Close Price column", df_cols, index=None, key='close_column',
-                                    on_change=lambda: st.session_state.update({'CLOSE_UPDATED': True}))
-
-        # Model Parameters
-        test_split = st.slider("Test Data Fraction", 0.05, 0.5, 0.1, step=0.05)
-        window_size = st.slider("Window Size", min_value=10, max_value=200, value=60, step=5)
-
-        if not model_file:
-            epochs = st.slider("Epochs", min_value=5, max_value=100, value=25, step=5)
-            batch_size = st.selectbox("Batch Size", options=[16, 32, 64, 128], index=1)
+    date_column, close_column, test_split, window_size, epochs, batch_size = sidebar(model_file, df)
 
     if st.session_state['DATE_UPDATED'] and st.session_state['CLOSE_UPDATED']:
         try:
@@ -70,9 +53,9 @@ if uploaded_file:
 
                 _, col2, _ = st.columns([1, 1, 1])
 
-                st.markdown("<br>", unsafe_allow_html=True)  # Line Break
-
                 with col2:
+                    st.markdown("<br>", unsafe_allow_html=True)  # Line Break
+
                     if not st.session_state['RUN_PREDICT']:
                         if st.button("📈 Run Predictions", disabled=st.session_state['RUN_PREDICT']):
                             predictions = model.predict(X_test)
@@ -97,19 +80,23 @@ if uploaded_file:
 
                 _, col2, _ = st.columns([1, 1, 1])
 
-                st.markdown("<br>", unsafe_allow_html=True)  # Line Break
-
                 with col2:
+                    st.markdown("<br>", unsafe_allow_html=True)  # Line Break
+
                     if not st.session_state['TRAINED']:
                         if st.button("🚀 Train Model", disabled=st.session_state['TRAINED']):
-                            model = custom_progress_bar(epochs, batch_size, X_train, y_train, model)
-                            predictions = model.predict(X_test)
-                            predictions = scaler.inverse_transform(predictions)
+                            try:
+                                model = custom_progress_bar(epochs, batch_size, X_train, y_train, model)
+                                predictions = model.predict(X_test)
+                                predictions = scaler.inverse_transform(predictions)
 
-                            st.session_state['TRAINED'] = True
-                            st.session_state["PREDICTIONS"] = predictions
+                                st.session_state['TRAINED'] = True
+                                st.session_state["PREDICTIONS"] = predictions
 
-                            st.rerun()
+                                st.rerun()
+
+                            except Exception as e:
+                                st.error("Something went wrong... Refresh the page and Start again!")
 
                 if st.session_state['TRAINED']:
                     st.success("✅ Model Trained Successfully!")
