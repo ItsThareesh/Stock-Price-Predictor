@@ -9,7 +9,7 @@ import tempfile
 import joblib
 import zipfile
 
-from helper import build_model, prepare_train_test_datasets
+from helper import build_model, load_csv, prepare_train_test_datasets
 from widgets import custom_progress_bar, generate_prediction_graph, generate_history_graph, sidebar, upload_files_widget
 from configs import init_session_state
 
@@ -26,7 +26,7 @@ uploaded_file, model_file, scaler_file = upload_files_widget()
 
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file)
+    df = load_csv(uploaded_file)  # TODO: CACHE THIS
 
     date_column, close_column, test_split, window_size, epochs, batch_size, show_graph = sidebar(model_file, df)
 
@@ -91,9 +91,7 @@ if uploaded_file:
                 training_data_len, X_train, y_train, X_test, scaler = prepare_train_test_datasets(df, close_column,
                                                                                                   test_split, window_size)
 
-                if not st.session_state.get("BUILT_MODEL", False):
-                    st.session_state["MODEL"] = build_model(X_train)
-                    st.session_state["BUILT_MODEL"] = True
+                model = build_model(X_train)
 
                 _, col2, _ = st.columns([1, 1, 1])
 
@@ -110,10 +108,9 @@ if uploaded_file:
                 if st.session_state.get('CLICKED_TRAIN', False):
                     if not st.session_state.get('FINISHED_TRAINING', False):
                         try:
-                            st.session_state["MODEL"] = custom_progress_bar(st, epochs, batch_size, X_train, y_train, st.session_state["MODEL"])
-                            st.session_state["FINISHED_TRAINING"] = True
+                            model = custom_progress_bar(st, epochs, batch_size, X_train, y_train, model)
 
-                            predictions = st.session_state["MODEL"].predict(X_test)
+                            predictions = model.predict(X_test)
                             predictions = scaler.inverse_transform(predictions)
                             st.session_state["PREDICTIONS"] = predictions
 
@@ -139,7 +136,7 @@ if uploaded_file:
                                 zip_path = os.path.join(tmpdir, "model_package.zip")
 
                                 # Save model
-                                st.session_state["MODEL"].save(model_path)
+                                model.save(model_path)
 
                                 # Save scaler
                                 joblib.dump(scaler, scaler_path)

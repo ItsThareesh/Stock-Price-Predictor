@@ -28,7 +28,7 @@ def sidebar(model_file, df):
     if not model_file:
         epochs = st.sidebar.slider("Epochs", min_value=5, max_value=100, value=25, step=5)
         batch_size = st.sidebar.selectbox("Batch Size", options=[16, 32, 64, 128], index=1)
-        show_graph = st.sidebar.checkbox("Show Graph", value=True)
+        show_graph = st.sidebar.checkbox("Show Graph", value=False)
 
     return date_column, close_column, test_split, window_size, epochs, batch_size, show_graph
 
@@ -38,7 +38,7 @@ def custom_progress_bar(st, epochs, batch_size, X_train, y_train, model):
     history_all = {'loss': [], 'root_mean_squared_error': []}
 
     for epoch in range(epochs):
-        history = model.fit(X_train, y_train, epochs=1, batch_size=batch_size)
+        history = model.fit(X_train, y_train, epochs=1, batch_size=batch_size, shuffle=False)
 
         epoch_loss = history.history['loss'][0]
         rmse_loss = history.history['root_mean_squared_error'][0]

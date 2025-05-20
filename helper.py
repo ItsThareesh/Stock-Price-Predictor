@@ -1,3 +1,6 @@
+import pandas as pd
+import streamlit as st
+
 import numpy as np
 
 from sklearn.preprocessing import StandardScaler
@@ -8,6 +11,13 @@ from keras.layers import LSTM, Dense, Dropout
 import joblib
 
 
+@st.cache_data
+def load_csv(uploaded_file):
+    df = pd.read_csv(uploaded_file)
+    return df
+
+
+@st.cache_resource
 def build_model(X_train):
     model = Sequential(name="StockPriceLSTM")
     model.add(keras.Input(shape=(X_train.shape[1], X_train.shape[2])))
@@ -32,6 +42,11 @@ def create_sliding_window(data, window_size):
     return np.array(X), np.array(y).reshape(-1)
 
 
+@st.cache_resource(show_spinner="Loading Scaler...")
+def load_scaler(scaler_path):
+    return joblib.load(scaler_path)
+
+
 def prepare_train_test_datasets(df, close_column, test_split, window_size, scaler_path=None, only_predict=False):
     close_prices = df[close_column].values
     dataset = close_prices.reshape(-1, 1)
@@ -40,7 +55,7 @@ def prepare_train_test_datasets(df, close_column, test_split, window_size, scale
 
     if only_predict:
         # Load scaler and transform entire dataset
-        scaler = joblib.load(scaler_path)
+        scaler = load_scaler(scaler_path)
         scaled_dataset = scaler.transform(dataset)
 
         scaled_test = scaled_dataset[training_data_len - window_size:]
