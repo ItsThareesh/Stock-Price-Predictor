@@ -17,6 +17,7 @@ def custom_progress_bar(st, epochs, batch_size, X_train, y_train, model):
         progress = int(((epoch + 1) / epochs) * 100)
         progress_bar.progress(progress, text=f"Epoch {epoch + 1}/{epochs}")
 
+    st.session_state['FINISHED'] = True
     st.session_state['HISTORY'] = history_all
 
     return model
@@ -77,7 +78,7 @@ def sidebar(model_file, df):
     show_graph = None
 
     if not model_file:
-        epochs = st.sidebar.slider("Epochs", min_value=5, max_value=100, value=25, step=5)
+        epochs = st.sidebar.slider("Epochs", min_value=5, max_value=100, value=1, step=5)
         batch_size = st.sidebar.selectbox("Batch Size", options=[16, 32, 64, 128], index=1)
         show_graph = st.sidebar.checkbox("Show Graph", value=True)
 

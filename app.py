@@ -83,53 +83,52 @@ if uploaded_file:
                 with col2:
                     st.markdown("<br>", unsafe_allow_html=True)  # Line Break
 
-                    if not st.session_state['TRAINED']:
-                        if st.button("🚀 Train Model", disabled=st.session_state['TRAINED']):
-                            try:
-                                model = custom_progress_bar(st, epochs, batch_size, X_train, y_train, model)
-                                predictions = model.predict(X_test)
-                                predictions = scaler.inverse_transform(predictions)
+                    if not st.session_state['CLICKED_TRAIN']:
+                        if st.button("🚀 Train Model"):
+                            st.session_state['CLICKED_TRAIN'] = True
+                            st.rerun()
 
-                                st.session_state['TRAINED'] = True
-                                st.session_state["PREDICTIONS"] = predictions
+                if st.session_state['CLICKED_TRAIN']:
+                    if not st.session_state['FINISHED']:
+                        try:
+                            model = custom_progress_bar(st, epochs, batch_size, X_train, y_train, model)
+                            predictions = model.predict(X_test)
+                            predictions = scaler.inverse_transform(predictions)
 
-                                st.rerun()
+                            st.session_state['CLICKED_TRAIN'] = True
+                            st.session_state["PREDICTIONS"] = predictions
 
-                            except Exception as e:
-                                print(e)
-                                st.error("Something went wrong... Refresh the page and Start again!")
+                            st.success("✅ Model Trained Successfully!")
+                            st.rerun()
 
-                if st.session_state['TRAINED']:
-                    st.success("✅ Model Trained Successfully!")
+                        except Exception as e:
+                            st.error("Something went wrong... Refresh the page and Start again!")
 
-                    if show_graph:
-                        with st.expander(label="Training Graphs"):
-                            generate_history_graph(st.session_state['HISTORY'], plt)
+                    else:
+                        if show_graph:
+                            with st.expander(label="Training Graphs"):
+                                generate_history_graph(st.session_state['HISTORY'], plt)
 
-                    generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
+                        generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
 
-                    _, col2, _ = st.columns([1, 1, 1])
+                        _, col2, _ = st.columns([1, 1, 1])
 
-                    with col2:
-                        with tempfile.NamedTemporaryFile(suffix=".keras", delete=False) as tmp:
-                            saved_model_path = tmp.name
+                        with col2:
+                            with tempfile.NamedTemporaryFile(suffix=".keras", delete=False) as tmp:
+                                saved_model_path = tmp.name
 
-                            model.save(saved_model_path)
-                            tmp.seek(0)
-                            binary = tmp.read()
+                                model.save(saved_model_path)
+                                tmp.seek(0)
+                                binary = tmp.read()
 
-                        st.markdown("<br>", unsafe_allow_html=True)  # Line Break
+                            st.markdown("<br>", unsafe_allow_html=True)  # Line Break
 
-                        st.download_button(
-                            label="Download Trained Model (.keras)",
-                            data=binary,
-                            file_name="custom_trained_model.keras",
-                        )
+                            st.download_button(label="Download Trained Model (.keras)", data=binary, file_name="custom_trained_model.keras")
 
-                        # Cleanup the temporary files
+                            # Cleanup the temporary files
 
-                        if os.path.exists(saved_model_path):
-                            os.remove(saved_model_path)
+                            if os.path.exists(saved_model_path):
+                                os.remove(saved_model_path)
 
         except Exception as e:
             st.error(f"Error processing data: {e}")
