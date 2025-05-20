@@ -55,18 +55,19 @@ if uploaded_file:
 
                 with col2:
                     st.markdown("<br>", unsafe_allow_html=True)  # Line Break
+                    placeholder = st.empty()
 
-                    if not st.session_state['RUN_PREDICT']:
-                        if st.button("📈 Run Predictions", disabled=st.session_state['RUN_PREDICT']):
+                    if not st.session_state.get('RUN_PREDICT', False):
+                        if placeholder.button("📈 Run Predictions"):
+                            placeholder.empty()  # Hide Button instantly
+
                             predictions = model.predict(X_test)
                             predictions = scaler.inverse_transform(predictions)
 
                             st.session_state['RUN_PREDICT'] = True
                             st.session_state["PREDICTIONS"] = predictions
 
-                            st.rerun()
-
-                if st.session_state['RUN_PREDICT']:
+                if st.session_state.get('RUN_PREDICT', False):
                     st.success("✅ Model Predictions Completed!")
                     generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
 
@@ -82,14 +83,16 @@ if uploaded_file:
 
                 with col2:
                     st.markdown("<br>", unsafe_allow_html=True)  # Line Break
+                    placeholder = st.empty()
 
-                    if not st.session_state['CLICKED_TRAIN']:
-                        if st.button("🚀 Train Model"):
+                    if not st.session_state.get('CLICKED_TRAIN', False):
+                        if placeholder.button("🚀 Train Model", disabled=st.session_state.get('CLICKED_TRAIN', False)):
+                            placeholder.empty()  # Hide Button Instantly
+
                             st.session_state['CLICKED_TRAIN'] = True
-                            st.rerun()
 
-                if st.session_state['CLICKED_TRAIN']:
-                    if not st.session_state['FINISHED']:
+                if st.session_state.get('CLICKED_TRAIN', False):
+                    if not st.session_state.get('FINISHED_TRAINING', False):
                         try:
                             model = custom_progress_bar(st, epochs, batch_size, X_train, y_train, model)
                             predictions = model.predict(X_test)

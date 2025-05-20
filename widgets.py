@@ -17,14 +17,14 @@ def custom_progress_bar(st, epochs, batch_size, X_train, y_train, model):
         progress = int(((epoch + 1) / epochs) * 100)
         progress_bar.progress(progress, text=f"Epoch {epoch + 1}/{epochs}")
 
-    st.session_state['FINISHED'] = True
+    st.session_state['FINISHED_TRAINING'] = True
     st.session_state['HISTORY'] = history_all
 
     return model
 
 
 def generate_prediction_graph(df, plt, date_column, close_column, training_data_len):
-    predictions = st.session_state["PREDICTIONS"]
+    predictions = st.session_state.get('PREDICTIONS')
     test_df = df[training_data_len:]
 
     st.write("### 📊 Prediction vs Actual")
