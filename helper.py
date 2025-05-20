@@ -5,6 +5,8 @@ from tensorflow import keras
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout
 
+import joblib
+
 
 def build_model(X_train):
     model = Sequential(name="StockPriceLSTM")
@@ -30,19 +32,31 @@ def create_sliding_window(data, window_size):
     return np.array(X), np.array(y).reshape(-1)
 
 
-def prepare_train_test_datasets(df, close_column, test_split, window_size):
+def prepare_train_test_datasets(df, close_column, test_split, window_size, scaler_path=None, only_predict=False):
     close_prices = df[close_column].values
     dataset = close_prices.reshape(-1, 1)
 
-    training_data_len = int(np.ceil((1-test_split) * len(close_prices)))
+    training_data_len = int(np.ceil((1 - test_split) * len(close_prices)))
 
-    scaler = StandardScaler()
-    scaled_data = scaler.fit_transform(dataset)
+    if only_predict:
+        # Load scaler and transform entire dataset
+        scaler = joblib.load(scaler_path)
+        scaled_dataset = scaler.transform(dataset)
 
-    scaled_train = scaled_data[:training_data_len]
-    X_train, y_train = create_sliding_window(scaled_train, window_size)
+        scaled_test = scaled_dataset[training_data_len - window_size:]
+        X_test, _ = create_sliding_window(scaled_test, window_size)
 
-    scaled_test = scaled_data[training_data_len - window_size:]
-    X_test, _ = create_sliding_window(scaled_test, window_size)
+        return training_data_len, X_test, scaler
 
-    return training_data_len, scaler, X_train, y_train, X_test
+    else:
+        # Initialize Scaler and Fit Transform entire dataset
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(dataset)
+
+        scaled_train = scaled_data[:training_data_len]
+        X_train, y_train = create_sliding_window(scaled_train, window_size)
+
+        scaled_test = scaled_data[training_data_len - window_size:]
+        X_test, _ = create_sliding_window(scaled_test, window_size)
+
+        return training_data_len, X_train, y_train, X_test, scaler

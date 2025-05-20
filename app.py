@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 from keras.models import load_model
 
 import tempfile
+import joblib
+import zipfile
 
 from helper import build_model, prepare_train_test_datasets
-from widgets import custom_progress_bar, generate_prediction_graph, generate_history_graph, sidebar
+from widgets import custom_progress_bar, generate_prediction_graph, generate_history_graph, sidebar, upload_files_widget
 from configs import init_session_state
 
 init_session_state()
@@ -19,8 +21,8 @@ st.set_page_config(page_title="Stock Price Predictor", page_icon="📈")
 st.title("📈 Stock Price Predictor with LSTM")
 
 st.markdown("<br><br>", unsafe_allow_html=True)
-uploaded_file = st.file_uploader("# Upload your CSV file", type=["csv"])
-model_file = st.file_uploader("Upload your trained Model file (.keras, .h5)", type=["keras", "h5"])
+
+uploaded_file, model_file, scaler_file = upload_files_widget()
 
 
 if uploaded_file:
@@ -28,7 +30,7 @@ if uploaded_file:
 
     date_column, close_column, test_split, window_size, epochs, batch_size, show_graph = sidebar(model_file, df)
 
-    if st.session_state['DATE_UPDATED'] and st.session_state['CLOSE_UPDATED']:
+    if st.session_state["DATE_UPDATED"] and st.session_state["CLOSE_UPDATED"]:
         try:
             df[date_column] = pd.to_datetime(df[date_column])
             df.sort_values(date_column, inplace=True)
@@ -42,42 +44,56 @@ if uploaded_file:
             st.error(f"Error converting date column: {e}")
 
         try:
-            training_data_len, scaler, X_train, y_train, X_test = prepare_train_test_datasets(df, close_column, test_split, window_size)
+            if model_file and scaler_file:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    loaded_model_path = os.path.join(tmpdir, "loaded_model.keras")  # Save model
+                    scaler_path = os.path.join(tmpdir, "loaded_scaler.bin")  # Save scaler
 
-            if model_file:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".keras") as tmp:
-                    tmp.write(model_file.read())
-                    loaded_model_path = tmp.name
+                    with open(loaded_model_path, "wb") as f:
+                        f.write(model_file.read())
 
-                model = load_model(loaded_model_path)  # Load Model
+                    with open(scaler_path, "wb") as f:
+                        f.write(scaler_file.read())
 
-                _, col2, _ = st.columns([1, 1, 1])
+                    training_data_len, X_test, scaler = prepare_train_test_datasets(df, close_column,
+                                                                                    test_split, window_size,
+                                                                                    scaler_path, True)
 
-                with col2:
-                    st.markdown("<br>", unsafe_allow_html=True)  # Line Break
-                    placeholder = st.empty()
+                    model = load_model(loaded_model_path)  # Load Model
 
-                    if not st.session_state.get('RUN_PREDICT', False):
-                        if placeholder.button("📈 Run Predictions"):
-                            placeholder.empty()  # Hide Button instantly
+                    _, col2, _ = st.columns([1, 1, 1])
 
-                            predictions = model.predict(X_test)
-                            predictions = scaler.inverse_transform(predictions)
+                    with col2:
+                        st.markdown("<br>", unsafe_allow_html=True)  # Line Break
+                        placeholder = st.empty()
 
-                            st.session_state['RUN_PREDICT'] = True
-                            st.session_state["PREDICTIONS"] = predictions
+                        if not st.session_state.get('RUN_PREDICT', False):
+                            if placeholder.button("📈 Run Predictions"):
+                                placeholder.empty()  # Hide Button instantly
 
-                if st.session_state.get('RUN_PREDICT', False):
-                    st.success("✅ Model Predictions Completed!")
-                    generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
+                                try:
+                                    predictions = model.predict(X_test)
+                                    predictions = predictions.reshape(-1, 1)
+                                    predictions = scaler.inverse_transform(predictions)
 
-                # Cleanup temporary files
+                                    st.session_state["RUN_PREDICT"] = True
+                                    st.session_state["PREDICTIONS"] = predictions
 
-                if os.path.exists(loaded_model_path):
-                    os.remove(loaded_model_path)
+                                except Exception as e:
+                                    st.error(f"⚠️ Error: {str(e)}")
+
+                    if st.session_state.get('RUN_PREDICT', False):
+                        st.success("✅ Model Predictions Completed!")
+
+                        generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
 
             else:
-                model = build_model(X_train)
+                training_data_len, X_train, y_train, X_test, scaler = prepare_train_test_datasets(df, close_column,
+                                                                                                  test_split, window_size)
+
+                if not st.session_state.get("BUILT_MODEL", False):
+                    st.session_state["MODEL"] = build_model(X_train)
+                    st.session_state["BUILT_MODEL"] = True
 
                 _, col2, _ = st.columns([1, 1, 1])
 
@@ -89,49 +105,57 @@ if uploaded_file:
                         if placeholder.button("🚀 Train Model", disabled=st.session_state.get('CLICKED_TRAIN', False)):
                             placeholder.empty()  # Hide Button Instantly
 
-                            st.session_state['CLICKED_TRAIN'] = True
+                            st.session_state["CLICKED_TRAIN"] = True
 
                 if st.session_state.get('CLICKED_TRAIN', False):
                     if not st.session_state.get('FINISHED_TRAINING', False):
                         try:
-                            model = custom_progress_bar(st, epochs, batch_size, X_train, y_train, model)
-                            predictions = model.predict(X_test)
-                            predictions = scaler.inverse_transform(predictions)
+                            st.session_state["MODEL"] = custom_progress_bar(st, epochs, batch_size, X_train, y_train, st.session_state["MODEL"])
+                            st.session_state["FINISHED_TRAINING"] = True
 
-                            st.session_state['CLICKED_TRAIN'] = True
+                            predictions = st.session_state["MODEL"].predict(X_test)
+                            predictions = scaler.inverse_transform(predictions)
                             st.session_state["PREDICTIONS"] = predictions
 
                             st.success("✅ Model Trained Successfully!")
                             st.rerun()
 
                         except Exception as e:
-                            st.error("Something went wrong... Refresh the page and Start again!")
+                            st.error(f"⚠️ Error: {str(e)}")
 
                     else:
                         if show_graph:
                             with st.expander(label="Training Graphs"):
-                                generate_history_graph(st.session_state['HISTORY'], plt)
+                                generate_history_graph(st.session_state["HISTORY"], plt)
 
                         generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
 
                         _, col2, _ = st.columns([1, 1, 1])
 
                         with col2:
-                            with tempfile.NamedTemporaryFile(suffix=".keras", delete=False) as tmp:
-                                saved_model_path = tmp.name
+                            with tempfile.TemporaryDirectory() as tmpdir:
+                                model_path = os.path.join(tmpdir, "model.keras")
+                                scaler_path = os.path.join(tmpdir, "scaler.bin")
+                                zip_path = os.path.join(tmpdir, "model_package.zip")
 
-                                model.save(saved_model_path)
-                                tmp.seek(0)
-                                binary = tmp.read()
+                                # Save model
+                                st.session_state["MODEL"].save(model_path)
 
-                            st.markdown("<br>", unsafe_allow_html=True)  # Line Break
+                                # Save scaler
+                                joblib.dump(scaler, scaler_path)
 
-                            st.download_button(label="Download Trained Model (.keras)", data=binary, file_name="custom_trained_model.keras")
+                                # Zip both
+                                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                                    zipf.write(model_path, arcname="model.keras")
+                                    zipf.write(scaler_path, arcname="scaler.bin")
 
-                            # Cleanup the temporary files
+                                # Read zip to bytes
+                                with open(zip_path, "rb") as f:
+                                    zip_bytes = f.read()
 
-                            if os.path.exists(saved_model_path):
-                                os.remove(saved_model_path)
+                                st.markdown("<br>", unsafe_allow_html=True)
+
+                                st.download_button(label="Download Model + Scaler (ZIP)", data=zip_bytes, file_name="model_and_scaler.zip")
 
         except Exception as e:
-            st.error(f"Error processing data: {e}")
+            st.error(f"⚠️ Error: {str(e)}")

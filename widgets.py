@@ -1,6 +1,38 @@
 import streamlit as st
 
 
+def upload_files_widget():
+    uploaded_file = st.file_uploader("# Upload your CSV file", type=["csv"])
+    model_file = st.file_uploader("Upload your trained Model file (.keras, .h5)", type=["keras", "h5"])
+    scaler_file = st.file_uploader("Upload your Scaler file", type=["bin"])
+    return uploaded_file, model_file, scaler_file
+
+
+def sidebar(model_file, df):
+    st.sidebar.markdown("## Model Parameters")
+
+    df_cols = df.columns.tolist()
+
+    date_column = st.sidebar.selectbox("Select the Date column", df_cols, index=None, key='date_column',
+                                       on_change=lambda: st.session_state.update({'DATE_UPDATED': True}))
+    close_column = st.sidebar.selectbox("Select the Close Price column", df_cols, index=None, key='close_column',
+                                        on_change=lambda: st.session_state.update({'CLOSE_UPDATED': True}))
+
+    test_split = st.sidebar.slider("Test Data Fraction", 0.05, 0.5, 0.1, step=0.05)
+    window_size = st.sidebar.slider("Window Size", min_value=10, max_value=200, value=60, step=5)
+
+    epochs = None
+    batch_size = None
+    show_graph = None
+
+    if not model_file:
+        epochs = st.sidebar.slider("Epochs", min_value=5, max_value=100, value=25, step=5)
+        batch_size = st.sidebar.selectbox("Batch Size", options=[16, 32, 64, 128], index=1)
+        show_graph = st.sidebar.checkbox("Show Graph", value=True)
+
+    return date_column, close_column, test_split, window_size, epochs, batch_size, show_graph
+
+
 def custom_progress_bar(st, epochs, batch_size, X_train, y_train, model):
     progress_bar = st.progress(0, text="⏳ Training in progress...")
     history_all = {'loss': [], 'root_mean_squared_error': []}
@@ -58,28 +90,3 @@ def generate_history_graph(history, plt):
     plt.tight_layout()
 
     st.pyplot(plt)
-
-
-def sidebar(model_file, df):
-    st.sidebar.markdown("## Model Parameters")
-
-    df_cols = df.columns.tolist()
-
-    date_column = st.sidebar.selectbox("Select the Date column", df_cols, index=None, key='date_column',
-                                       on_change=lambda: st.session_state.update({'DATE_UPDATED': True}))
-    close_column = st.sidebar.selectbox("Select the Close Price column", df_cols, index=None, key='close_column',
-                                        on_change=lambda: st.session_state.update({'CLOSE_UPDATED': True}))
-
-    test_split = st.sidebar.slider("Test Data Fraction", 0.05, 0.5, 0.1, step=0.05)
-    window_size = st.sidebar.slider("Window Size", min_value=10, max_value=200, value=60, step=5)
-
-    epochs = None
-    batch_size = None
-    show_graph = None
-
-    if not model_file:
-        epochs = st.sidebar.slider("Epochs", min_value=5, max_value=100, value=1, step=5)
-        batch_size = st.sidebar.selectbox("Batch Size", options=[16, 32, 64, 128], index=1)
-        show_graph = st.sidebar.checkbox("Show Graph", value=True)
-
-    return date_column, close_column, test_split, window_size, epochs, batch_size, show_graph
