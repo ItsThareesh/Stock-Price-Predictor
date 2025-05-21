@@ -65,27 +65,22 @@ if uploaded_file:
 
                     with col2:
                         st.markdown("<br>", unsafe_allow_html=True)  # Line Break
-                        placeholder = st.empty()
 
-                        if not st.session_state.get('RUN_PREDICT', False):
-                            if placeholder.button("📈 Run Predictions"):
-                                placeholder.empty()  # Hide Button instantly
+                        if st.button("📈 Run Predictions"):
+                            try:
+                                predictions = model.predict(X_test)
+                                predictions = scaler.inverse_transform(predictions)
+                                st.session_state["PREDICTIONS"] = predictions
 
-                                try:
-                                    predictions = model.predict(X_test)
-                                    predictions = predictions.reshape(-1, 1)
-                                    predictions = scaler.inverse_transform(predictions)
-
-                                    st.session_state["RUN_PREDICT"] = True
-                                    st.session_state["PREDICTIONS"] = predictions
-
-                                except Exception as e:
-                                    st.error(f"⚠️ Error: {str(e)}")
+                                st.session_state["RUN_PREDICT"] = True
+                            except Exception as e:
+                                st.error(f"⚠️ Error: {str(e)}")
 
                     if st.session_state.get('RUN_PREDICT', False):
                         st.success("✅ Model Predictions Completed!")
-
                         generate_prediction_graph(df, date_column, close_column, window_size)
+
+                        st.session_state["RUN_PREDICT"] = False
 
             else:
                 training_data_len, X_train, y_train, X_test, scaler = prepare_train_test_datasets(df, close_column,
