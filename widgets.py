@@ -8,7 +8,7 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
-from typing import Tuple, Optional
+from typing import Tuple
 
 
 def upload_files_widget() -> Tuple[UploadedFile, UploadedFile, UploadedFile]:
