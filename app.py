@@ -3,13 +3,13 @@ import os
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from keras.models import load_model
+from keras import models
 
 import tempfile
 import joblib
 import zipfile
 
-from helper import build_model, load_csv, prepare_train_test_datasets
+from helper import build_model, load_csv, prepare_train_test_datasets, load_uploaded_model
 from widgets import custom_progress_bar, generate_prediction_graph, generate_history_graph, sidebar, upload_files_widget
 from configs import init_session_state
 
@@ -26,9 +26,9 @@ uploaded_file, model_file, scaler_file = upload_files_widget()
 
 
 if uploaded_file:
-    df = load_csv(uploaded_file)  # TODO: CACHE THIS
+    df = load_csv(uploaded_file)
 
-    date_column, close_column, test_split, window_size, epochs, batch_size, show_graph = sidebar(model_file, df)
+    date_column, close_column, test_split, window_size, epochs, batch_size, lr, show_graph = sidebar(model_file, df)
 
     if st.session_state["DATE_UPDATED"] and st.session_state["CLOSE_UPDATED"]:
         try:
@@ -55,11 +55,11 @@ if uploaded_file:
                     with open(scaler_path, "wb") as f:
                         f.write(scaler_file.read())
 
-                    training_data_len, X_test, scaler = prepare_train_test_datasets(df, close_column,
-                                                                                    test_split, window_size,
-                                                                                    scaler_path, True)
+                    X_test, scaler = prepare_train_test_datasets(df, close_column,
+                                                                 None, window_size,
+                                                                 scaler_path, True)
 
-                    model = load_model(loaded_model_path)  # Load Model
+                    model = load_uploaded_model(loaded_model_path)
 
                     _, col2, _ = st.columns([1, 1, 1])
 
@@ -85,13 +85,13 @@ if uploaded_file:
                     if st.session_state.get('RUN_PREDICT', False):
                         st.success("✅ Model Predictions Completed!")
 
-                        generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
+                        generate_prediction_graph(df, date_column, close_column, window_size)
 
             else:
                 training_data_len, X_train, y_train, X_test, scaler = prepare_train_test_datasets(df, close_column,
                                                                                                   test_split, window_size)
 
-                model = build_model(X_train)
+                model = build_model(X_train, lr)
 
                 _, col2, _ = st.columns([1, 1, 1])
 
@@ -108,7 +108,7 @@ if uploaded_file:
                 if st.session_state.get('CLICKED_TRAIN', False):
                     if not st.session_state.get('FINISHED_TRAINING', False):
                         try:
-                            model = custom_progress_bar(st, epochs, batch_size, X_train, y_train, model)
+                            model = custom_progress_bar(epochs, X_train, y_train, model)
 
                             predictions = model.predict(X_test)
                             predictions = scaler.inverse_transform(predictions)
@@ -123,9 +123,9 @@ if uploaded_file:
                     else:
                         if show_graph:
                             with st.expander(label="Training Graphs"):
-                                generate_history_graph(st.session_state["HISTORY"], plt)
+                                generate_history_graph(st.session_state["HISTORY"])
 
-                        generate_prediction_graph(df, plt, date_column, close_column, training_data_len)
+                        generate_prediction_graph(df, date_column, close_column, training_data_len)
 
                         _, col2, _ = st.columns([1, 1, 1])
 
