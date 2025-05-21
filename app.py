@@ -53,9 +53,8 @@ if uploaded_file:
                     with open(scaler_path, "wb") as f:
                         f.write(scaler_file.read())
 
-                    X_test, scaler = prepare_train_test_datasets(df, close_column,
-                                                                 None, window_size,
-                                                                 scaler_path, True)
+                    X_test, scaler = prepare_train_test_datasets(df, close_column, None,
+                                                                 window_size, scaler_path, True)
 
                     model = load_uploaded_model(loaded_model_path)
 
@@ -81,8 +80,10 @@ if uploaded_file:
                         st.session_state["RUN_PREDICT"] = False
 
             else:
-                training_data_len, X_train, y_train, X_test, scaler = prepare_train_test_datasets(df, close_column,
-                                                                                                  test_split, window_size)
+                training_data_len, X_train, y_train, X_val, y_val, scaler = prepare_train_test_datasets(
+                    df, close_column,
+                    test_split, window_size
+                )
 
                 model = build_model(X_train, lr)
 
@@ -101,9 +102,9 @@ if uploaded_file:
                 if st.session_state.get('CLICKED_TRAIN', False):
                     if not st.session_state.get('FINISHED_TRAINING', False):
                         try:
-                            model = custom_progress_bar(epochs, X_train, y_train, model)
+                            model = custom_progress_bar(epochs, X_train, y_train, X_val, y_val, model, batch_size)
 
-                            predictions = model.predict(X_test)
+                            predictions = model.predict(X_val)
                             predictions = scaler.inverse_transform(predictions)
                             st.session_state["PREDICTIONS"] = predictions
 

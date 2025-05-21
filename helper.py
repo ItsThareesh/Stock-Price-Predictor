@@ -42,17 +42,18 @@ def build_model(X_train: np.ndarray, learning_rate: float) -> keras.Model:
         learning_rate (float): Learning Rate se
 
     Retruns:
-        keras.Model: Compiled Keras model. 
+        keras.Model: Compiled Keras model.
     """
 
     model = models.Sequential(name="StockPriceLSTM")
     model.add(layers.Input(shape=(X_train.shape[1], X_train.shape[2])))
-    model.add(layers.LSTM(64, return_sequences=True))
+    model.add(layers.LSTM(128, return_sequences=True))
     model.add(layers.LSTM(64, return_sequences=False))
     model.add(layers.Dense(128, activation="relu"))
     model.add(layers.Dropout(0.5))
     model.add(layers.Dense(1))
     model.summary()
+
     model.compile(optimizer=optimizers.Adam(learning_rate=learning_rate), loss="mse", metrics=["root_mean_squared_error"])
 
     return model
@@ -133,12 +134,12 @@ def prepare_train_test_datasets(
 
     Returns:
         Union[
-            Tuple[int, np.ndarray, np.ndarray, np.ndarray, StandardScaler],
-            Tuple[int, np.ndarray, StandardScaler]
-        ]: 
+            Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, StandardScaler],
+            Tuple[np.ndarray, StandardScaler]
+        ]:
 
             If only_predict is True: Returns training_data_length, X_test, and scaler.
-            If only_predict is False: Returns training_data_length, X_train, y_train, X_test, and scaler.
+            If only_predict is False: Returns training_data_length, X_train, y_train, X_val, y_val and scaler.
     """
 
     close_prices = df[close_column].values
@@ -163,6 +164,6 @@ def prepare_train_test_datasets(
         X_train, y_train = create_sliding_window(scaled_train, window_size)
 
         scaled_test = scaled_data[training_data_len - window_size:]
-        X_test, _ = create_sliding_window(scaled_test, window_size)
+        X_val, y_val = create_sliding_window(scaled_test, window_size)
 
-        return training_data_len, X_train, y_train, X_test, scaler
+        return training_data_len, X_train, y_train, X_val, y_val, scaler

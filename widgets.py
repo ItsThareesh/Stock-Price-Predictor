@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 
 from typing import Tuple
 
+import math
+
 
 def upload_files_widget() -> Tuple[UploadedFile, UploadedFile, UploadedFile]:
     """
@@ -65,7 +67,7 @@ def sidebar(model_file: UploadedFile, df: pd.DataFrame) -> Tuple[str, str, float
     close_column = st.sidebar.selectbox("Select the Close Price column", df_cols, index=None, key='close_column',
                                         on_change=lambda: st.session_state.update({'CLOSE_UPDATED': True}))
     if not model_file:
-        test_split = st.sidebar.slider("Test Data Fraction", min_value=0.05, max_value=0.5, step=0.05, value=0.05 if not model_file else 0.25)
+        test_split = st.sidebar.slider("Test Data Fraction", min_value=0.05, max_value=0.5, step=0.05, value=0.05)
 
     window_size = st.sidebar.slider("Window Size", min_value=10, max_value=200, value=60, step=5)
 
@@ -78,30 +80,52 @@ def sidebar(model_file: UploadedFile, df: pd.DataFrame) -> Tuple[str, str, float
     return date_column, close_column, test_split, window_size, epochs, batch_size, lr, show_graph
 
 
-def custom_progress_bar(epochs: int, X_train: np.ndarray, y_train: np.ndarray, model: keras.Model) -> keras.Model:
+def custom_progress_bar(
+        epochs: int,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_val: np.ndarray,
+        y_val: np.ndarray,
+        model: keras.Model,
+        batch_size: int
+) -> keras.Model:
     """
         Custom Progress Bar for Training the model.
 
         Args:
             epochs (int): Number of epochs.
             X_train & y_train (np.ndarray): Training Data.
+            X_val & y_val (np.ndarray): Validation Data.
             model (keras.Model): Keras Model.
+            batch_size (int): Batch size.
 
         Returns:
             keras.Model: Trained Keras Model.
     """
 
     progress_bar = st.progress(0, text="⏳ Training in progress...")
-    history_all = {'loss': [], 'root_mean_squared_error': []}
+
+    history_all = {
+        'training_loss': [],
+        'root_mean_squared_error': [],
+        'val_loss': [],
+        'val_root_mean_squared_error': []
+    }
 
     for epoch in range(epochs):
-        history = model.fit(X_train, y_train, epochs=1)
+        history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=1, batch_size=batch_size)
 
+        # Extract metrics
         epoch_loss = history.history['loss'][0]
-        rmse_loss = history.history['root_mean_squared_error'][0]
+        rmse = history.history['root_mean_squared_error'][0]
+        val_loss = history.history['val_loss'][0]
+        val_rmse = history.history['val_root_mean_squared_error'][0]
 
-        history_all['loss'].append(epoch_loss)
-        history_all['root_mean_squared_error'].append(rmse_loss)
+        # Log history
+        history_all['training_loss'].append(epoch_loss)
+        history_all['root_mean_squared_error'].append(rmse)
+        history_all['val_loss'].append(val_loss)
+        history_all['val_root_mean_squared_error'].append(val_rmse)
 
         progress = int(((epoch + 1) / epochs) * 100)
         progress_bar.progress(progress, text=f"Epoch {epoch + 1}/{epochs}")
@@ -133,9 +157,9 @@ def generate_prediction_graph(df: pd.DataFrame, date_column: str, close_column: 
     st.write("### 📊 Prediction vs Actual")
 
     plt.figure(figsize=(12, 6))
-    plt.plot(test_df[date_column], test_df[close_column], label="Test (Actual)", color='orange')
+    plt.plot(test_df[date_column], test_df[close_column], label="Validation Set (Actual)", color='orange')
     plt.plot(test_df[date_column], predictions, label="Predictions", color='red', alpha=0.65)
-    plt.title("Stock Predictions - Zoomed Test Set")
+    plt.title("Stock Predictions - Zoomed Validation Set")
     plt.xlabel("Date")
     plt.ylabel("Close Price")
     plt.legend()
@@ -156,11 +180,13 @@ def generate_history_graph(history: dict) -> None:
 
     metrics = list(history.keys())
     num_metrics = len(metrics)
+    cols = 2
+    rows = math.ceil(num_metrics / cols)
 
-    plt.figure(figsize=(8*num_metrics, 6))
+    plt.figure(figsize=(8 * cols, 6 * rows))
 
     for idx, metric in enumerate(metrics, 1):
-        plt.subplot(1, num_metrics, idx)
+        plt.subplot(rows, cols, idx)
         plt.plot(history[metric], label=metric)
         plt.title(f"{metric} over Epochs")
         plt.xlabel('Epochs')
