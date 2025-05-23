@@ -94,9 +94,7 @@ docker run -p 8501:8501 temperature-predictor-lstm
 
 ### 4. Access the App
 
-Open your browser and go to:
-
-`localhost:8501`
+Open your browser and go to: `localhost:8501`
 
 ## Training your own model
 

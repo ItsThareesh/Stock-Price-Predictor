@@ -23,8 +23,8 @@ def upload_files_widget() -> Tuple[UploadedFile, UploadedFile, UploadedFile]:
 
     uploaded_file = st.file_uploader("# Upload your CSV file", type=["csv"])
     model_file = st.file_uploader("Upload your trained Model file (.keras, .h5)", type=["keras", "h5"])
-    feature_scaler_file = st.file_uploader("Upload your Feature Scaler file", type=["bin"])
-    target_scaler_file = st.file_uploader("Upload your Target Scaler file", type=["bin"])
+    feature_scaler_file = st.file_uploader("Upload your Feature Scaler file", type=["joblib"])
+    target_scaler_file = st.file_uploader("Upload your Target Scaler file", type=["joblib"])
 
     return uploaded_file, model_file, feature_scaler_file, target_scaler_file
 

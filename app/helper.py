@@ -165,7 +165,7 @@ def load_uploaded_model(model_path: str) -> models.Model:
         Loads the model from the specified path. Written only to cache the process of fetching model.
 
         Args:
-            model_path (str): Path to the model file (.keras, .h5).
+            model_path (str): Path to the model file (.keras).
 
         Returns:
             StandardScaler object.
@@ -180,7 +180,7 @@ def load_scaler(scaler_path: str) -> StandardScaler:
         Loads the feature/target scaler from the specified path.
 
         Args:
-            scaler_path (str): Path to the scaler file (.bin).
+            scaler_path (str): Path to the scaler file (.joblib).
 
         Returns:
             StandardScaler object.
