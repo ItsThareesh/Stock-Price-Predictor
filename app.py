@@ -22,7 +22,7 @@ if uploaded_file:
     clean_df = clean_data(df)
 
     st.markdown("<br>", unsafe_allow_html=True)  # Line Break
-    with st.expander(label="### Feature Engineered Data", expanded=True):
+    with st.expander(label="Feature Engineered Data", expanded=True):
         st.write(clean_df.head())
 
     window_size = st.slider("Window Size", min_value=12, max_value=72, value=24, step=12)

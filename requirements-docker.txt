@@ -6,4 +6,3 @@ streamlit==1.45.1
 scikit_learn==1.6.0
 tensorflow==2.19.0
 keras==3.9.2
-seaborn==0.13.2
