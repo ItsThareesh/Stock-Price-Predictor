@@ -25,6 +25,8 @@ if uploaded_file:
     with st.expander(label="Feature Engineered Data", expanded=True):
         st.write(clean_df.head())
 
+    st.markdown("<br>", unsafe_allow_html=True)
+
     window_size = st.slider("Window Size", min_value=12, max_value=72, value=24, step=12)
     step_size = st.slider("Step Size", min_value=50, max_value=500, value=250, step=50)
 
